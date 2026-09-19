@@ -19,7 +19,7 @@
 // Il rate limit (10000 richieste/ora) e gli scope sono quelli della chiave.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Hono } from 'npm:hono@4.6.14';
+import { Hono, type Context } from 'npm:hono@4.6.14';
 import { McpServer, StreamableHttpTransport } from 'npm:mcp-lite@0.8.2';
 import { z } from 'npm:zod@4.1.12';
 
@@ -272,9 +272,11 @@ mcpApp.get('/', (c) =>
   }),
 );
 
-mcpApp.options('/mcp', (c) => new Response(null, { status: 204, headers: CORS }));
-
-mcpApp.all('/mcp', async (c) => {
+// Handler MCP condiviso: montato sia su /mcp (endpoint pubblico) sia su /
+// (radice) cosi' che il container Docker risponda anche a chi prova la radice
+// (es. check automatizzati tipo Glama). Su Supabase il platform inoltra solo
+// richieste sotto /mcp, quindi la rotta / e' inerte in produzione.
+async function mcpHandler(c: Context): Promise<Response> {
   // Per ogni richiesta costruiamo il server con la chiave estratta dagli
   // header: gli handler dei tool la chiudono nel proprio scope.
   const apiKey = extractApiKey(c.req.raw);
@@ -286,9 +288,17 @@ mcpApp.all('/mcp', async (c) => {
     res.headers.set(k, v);
   }
   return res;
-});
+}
+
+mcpApp.options('/mcp', (c) => new Response(null, { status: 204, headers: CORS }));
+mcpApp.all('/mcp', mcpHandler);
+mcpApp.options('/', (c) => new Response(null, { status: 204, headers: CORS }));
+mcpApp.all('/', mcpHandler);
 
 const app = new Hono();
+// Doppio mount: su Supabase il path effettivo e' /mcp/mcp (il platform include
+// il prefisso della funzione), nel container Docker invece / e /mcp.
+app.route('/', mcpApp);
 app.route('/mcp', mcpApp);
 
 Deno.serve(app.fetch);
