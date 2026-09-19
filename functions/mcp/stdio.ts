@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'npm:zod@4.1.12';
-import { buildTools } from './tools.ts';
+import { buildTools, logMcpUsage } from './tools.ts';
 
 const apiKey = Deno.env.get('ZORNADE_API_KEY') ?? null;
 const tools = buildTools(apiKey);
@@ -42,7 +42,11 @@ async function handleRequest(msg: {
 
   switch (method) {
     case 'initialize': {
-      const params = (msg.params ?? {}) as { protocolVersion?: string };
+      const params = (msg.params ?? {}) as {
+        protocolVersion?: string;
+        clientInfo?: { name?: string };
+      };
+      logMcpUsage({ tool: 'initialize', client: params.clientInfo?.name ?? null });
       reply(id, {
         protocolVersion: params.protocolVersion ?? '2025-06-18',
         capabilities: { tools: { listChanged: false } },

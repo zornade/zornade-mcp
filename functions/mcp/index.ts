@@ -22,7 +22,7 @@
 import { Hono, type Context } from 'npm:hono@4.6.14';
 import { McpServer, StreamableHttpTransport } from 'npm:mcp-lite@0.8.2';
 import { z } from 'npm:zod@4.1.12';
-import { buildTools, extractApiKey } from './tools.ts';
+import { buildTools, extractApiKey, logMcpUsage } from './tools.ts';
 import type { ToolTextResult } from './tools.ts';
 
 const CORS: Record<string, string> = {
@@ -75,6 +75,21 @@ mcpApp.get('/', (c) =>
 // (es. check automatizzati tipo Glama). Su Supabase il platform inoltra solo
 // richieste sotto /mcp, quindi la rotta / e' inerte in produzione.
 async function mcpHandler(c: Context): Promise<Response> {
+  // Log dell'evento initialize (clientInfo.name) per il monitoraggio in
+  // Grafana. Il body viene letto su un clone: la richiesta originale resta
+  // integra per il transport MCP.
+  try {
+    const clone = c.req.raw.clone();
+    const body = (await clone.json()) as {
+      method?: string;
+      params?: { clientInfo?: { name?: string } };
+    } | null;
+    if (body?.method === 'initialize') {
+      logMcpUsage({ tool: 'initialize', client: body.params?.clientInfo?.name ?? null });
+    }
+  } catch {
+    // Body assente o non JSON (es. GET per SSE): nessun log.
+  }
   // Per ogni richiesta costruiamo il server con la chiave estratta dagli
   // header: gli handler dei tool la chiudono nel proprio scope.
   const apiKey = extractApiKey(c.req.raw);

@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'npm:zod@4.1.12';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.49.8';
 
 const ZORNADE_BASE = 'https://api.zornade.com/api/v2';
 
@@ -45,8 +46,51 @@ export function extractApiKey(req: Request): string | null {
   return null;
 }
 
-async function callApi(apiKey: string | null, endpoint: string): Promise<string> {
+// ─── Logging usage (tabella mcp_usage, fire-and-forget) ─────────────────────
+
+let _usageDb: SupabaseClient | null = null;
+
+function usageDb(): SupabaseClient | null {
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return null;
+  if (!_usageDb) {
+    _usageDb = createClient(url, key, { auth: { persistSession: false } });
+  }
+  return _usageDb;
+}
+
+export function logMcpUsage(entry: {
+  tool: string;
+  status?: string;
+  statusCode?: number | null;
+  durationMs?: number | null;
+  tokenPrefix?: string | null;
+  client?: string | null;
+}): void {
+  const db = usageDb();
+  if (!db) return;
+  void (async () => {
+    try {
+      const r = await db.from('mcp_usage').insert({
+        tool: entry.tool,
+        status: entry.status ?? 'ok',
+        status_code: entry.statusCode ?? null,
+        duration_ms: entry.durationMs ?? null,
+        token_prefix: entry.tokenPrefix ?? null,
+        client: entry.client ?? null,
+      });
+      if (r.error) console.error('mcp_usage insert failed:', r.error.message);
+    } catch {
+      // Il logging non deve mai interferire con la risposta MCP.
+    }
+  })();
+}
+
+async function callApi(apiKey: string | null, endpoint: string, toolName: string): Promise<string> {
+  const started = Date.now();
   if (!apiKey) {
+    logMcpUsage({ tool: toolName, status: 'error', durationMs: Date.now() - started });
     return 'ERROR: Zornade API key missing. Send it as x-api-key header, Authorization: Bearer header, or ?api_key= query parameter. Free keys: https://app.zornade.com/api';
   }
   const ctrl = new AbortController();
@@ -57,6 +101,14 @@ async function callApi(apiKey: string | null, endpoint: string): Promise<string>
       signal: ctrl.signal,
     });
     const body = (await r.json()) as (Record<string, unknown> & ApiErrorBody) | null;
+    const ms = Date.now() - started;
+    logMcpUsage({
+      tool: toolName,
+      status: r.ok ? 'ok' : 'error',
+      statusCode: r.status,
+      durationMs: ms,
+      tokenPrefix: apiKey.slice(0, 8),
+    });
     if (!r.ok) {
       const err = (body ?? {}) as ApiErrorBody;
       return `ERROR (HTTP ${r.status}): ${err.message ?? err.error ?? 'unknown error'}`;
@@ -67,6 +119,12 @@ async function callApi(apiKey: string | null, endpoint: string): Promise<string>
     if (data && 'geometry' in data) delete data.geometry;
     return JSON.stringify(body, null, 2);
   } catch (e) {
+    logMcpUsage({
+      tool: toolName,
+      status: 'error',
+      durationMs: Date.now() - started,
+      tokenPrefix: apiKey.slice(0, 8),
+    });
     if ((e as Error).name === 'AbortError') {
       return 'ERROR: Zornade API call timed out after 20 seconds.';
     }
@@ -101,7 +159,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
         p.set('q', args.q);
         if (args.city) p.set('city', args.city);
         p.set('limit', String(args.limit ?? 10));
-        return textResult(await callApi(apiKey, `geocode/search?${p.toString()}`));
+        return textResult(await callApi(apiKey, `geocode/search?${p.toString()}`, 'zornade_geocode_search'));
       },
     },
     {
@@ -122,7 +180,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
         p.set('lng', String(args.lng));
         p.set('radius', String(args.radius ?? 100));
         p.set('limit', String(args.limit ?? 5));
-        return textResult(await callApi(apiKey, `geocode/reverse?${p.toString()}`));
+        return textResult(await callApi(apiKey, `geocode/reverse?${p.toString()}`, 'zornade_geocode_reverse'));
       },
     },
     {
@@ -147,7 +205,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
         const args = raw as { fid: string; include?: string };
         const include = args.include ?? 'risk,economics,solar,valuation';
         return textResult(
-          await callApi(apiKey, `parcels/${encodeURIComponent(args.fid)}?include=${encodeURIComponent(include)}`),
+          await callApi(apiKey, `parcels/${encodeURIComponent(args.fid)}?include=${encodeURIComponent(include)}`, 'zornade_parcel_by_id'),
         );
       },
     },
@@ -193,7 +251,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
           );
         }
         p.set('limit', String(args.limit ?? 50));
-        return textResult(await callApi(apiKey, `parcels/locate?${p.toString()}`));
+        return textResult(await callApi(apiKey, `parcels/locate?${p.toString()}`, 'zornade_parcel_locate'));
       },
     },
     {
@@ -223,7 +281,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
         if (args.label) p.set('label', args.label);
         if (args.sezione) p.set('sezione', args.sezione);
         p.set('limit', String(args.limit ?? 20));
-        return textResult(await callApi(apiKey, `parcels/search?${p.toString()}`));
+        return textResult(await callApi(apiKey, `parcels/search?${p.toString()}`, 'zornade_parcel_search'));
       },
     },
     {
@@ -248,7 +306,7 @@ export function buildTools(apiKey: string | null): ToolDef[] {
         if (args.region) p.set('region', args.region);
         if (args.province) p.set('province', args.province);
         const qs = p.toString();
-        return textResult(await callApi(apiKey, `admin/${args.type}${qs ? `?${qs}` : ''}`));
+        return textResult(await callApi(apiKey, `admin/${args.type}${qs ? `?${qs}` : ''}`, 'zornade_admin_lists'));
       },
     },
   ];
