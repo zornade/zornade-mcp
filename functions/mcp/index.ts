@@ -48,6 +48,10 @@ function extractApiKey(req: Request): string | null {
   }
   const param = new URL(req.url).searchParams.get('api_key');
   if (param?.startsWith('zrn_')) return param;
+  // Fallback: chiave di default dall'ambiente (self-hosting / check automatici
+  // tipo Glama, che iniettano ZORNADE_API_KEY come placeholder).
+  const envKey = Deno.env.get('ZORNADE_API_KEY');
+  if (envKey?.startsWith('zrn_')) return envKey;
   return null;
 }
 
@@ -301,4 +305,19 @@ const app = new Hono();
 app.route('/', mcpApp);
 app.route('/mcp', mcpApp);
 
-Deno.serve(app.fetch);
+// ZORNADE_LISTEN_PORTS (solo container/self-hosting): lista di porte separate
+// da virgola su cui servire l'MCP. Utile per i check automatici che provano
+// porte convenzionali (3000/8000/8080). Su Supabase la variabile non esiste e
+// resta il comportamento platform default (Deno.serve senza opzioni).
+const listenPorts = (Deno.env.get('ZORNADE_LISTEN_PORTS') ?? '')
+  .split(',')
+  .map((p) => Number(p.trim()))
+  .filter((p) => Number.isInteger(p) && p > 0 && p < 65536);
+
+if (listenPorts.length > 0) {
+  for (const port of listenPorts) {
+    Deno.serve({ port, hostname: '0.0.0.0' }, app.fetch);
+  }
+} else {
+  Deno.serve(app.fetch);
+}
