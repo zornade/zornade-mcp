@@ -115,4 +115,4 @@ required attribution text. Two attribution levels exist: source attributions
 are always mandatory; the "Dati elaborati da Zornade" attribution with link to
 zornade.com is required for free plan keys and can be waived with a commercial
 license (the response field `meta.zornade_attribution_required` tells you
-which rule applies). Full terms: [api.zornade.com](https://api.zornade.com).
+which rule applies). Full terms: [zornade.com](https://zornade.com/terms/).
