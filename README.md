@@ -1,4 +1,4 @@
-# Zornade MCP Server
+# Zornade MCP - Italian Cadastre, Geospatial & Real Estate Data
 
 Model Context Protocol server for Italian cadastral, geospatial and real
 estate data, powered by the [Zornade API v2](https://api.zornade.com).
@@ -63,6 +63,33 @@ curl -X POST https://mcp.zornade.com/mcp \
   -H "x-api-key: zrn_YOUR_KEY" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
+
+## Example
+
+A typical conversation, from natural language to a structured answer:
+
+1. The user asks: "Is this parcel at risk of flooding, and what is it worth?"
+2. The agent calls `zornade_geocode_search` with `{ "query": "via del corso 1, roma" }`,
+   then `zornade_parcel_by_id` with the returned `fid`.
+3. The answer comes back as compact JSON with English field names:
+
+```json
+{
+  "fid": 28007851,
+  "municipality": { "code": "H501", "name": "Roma", "province": "Roma", "region": "Lazio" },
+  "cadastral": { "foglio": "481", "urban_section": null, "municipality_code": "H501", "postal_code": "00186" },
+  "risk": { "seismic_zone": 3, "pga": 0.058, "flood_level": null, "landslide_level": null },
+  "subsidence": { "velocity_mm_year": -0.8, "risk_class": 1, "risk_label": "negligible", "direction": "stable" },
+  "economics": { "avg_residential_price_m2": 6283.33, "tax_year": 2023 },
+  "meta": { "licenses": ["..."], "zornade_attribution_required": true }
+}
+```
+
+(abridged for brevity; geometry is omitted from tool replies). Field names are
+English across the API (`area_m2`, `pga`, `risk_label`, ...). A few official
+cadastral terms stay in Italian on purpose (`foglio`, `sezione`), and values
+like street, municipality and region names are proper names and stay as they
+are.
 
 ## Architecture
 

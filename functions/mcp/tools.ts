@@ -87,6 +87,56 @@ export function logMcpUsage(entry: {
   })();
 }
 
+// ─── Traduzione etichette in inglese per il livello MCP ──────────────────
+//
+// L'API v2 espone quasi tutti i nomi di campo in inglese. Le poche eccezioni
+// italiane vengono tradotte qui, SOLO per le risposte MCP: l'API REST resta
+// invariata per i client esistenti. I valori restano in italiano dove sono
+// nomi propri (comuni, strade, regioni) o termini catastali ufficiali (foglio).
+
+const KEY_RENAMES: Record<string, string> = {
+  sezione_urbana: 'urban_section',
+  comune_code: 'municipality_code',
+};
+
+const VALUE_TRANSLATIONS: Record<string, Record<string, string>> = {
+  risk_label: {
+    trascurabile: 'negligible',
+    basso: 'low',
+    medio: 'medium',
+    alto: 'high',
+    elevato: 'very high',
+  },
+  direction: {
+    stabile: 'stable',
+    subsidenza: 'subsidence',
+    sollevamento: 'uplift',
+  },
+};
+
+function translateToEnglish(node: unknown): void {
+  if (Array.isArray(node)) {
+    for (const item of node) translateToEnglish(item);
+    return;
+  }
+  if (node && typeof node === 'object') {
+    const obj = node as Record<string, unknown>;
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      if (typeof value === 'string') {
+        const map = VALUE_TRANSLATIONS[key];
+        if (map && map[value] !== undefined) obj[key] = map[value];
+      } else {
+        translateToEnglish(value);
+      }
+      if (key in KEY_RENAMES) {
+        obj[KEY_RENAMES[key]] = value;
+        delete obj[key];
+      }
+    }
+  }
+}
+
 async function callApi(apiKey: string | null, endpoint: string, toolName: string): Promise<string> {
   const started = Date.now();
   if (!apiKey) {
@@ -117,6 +167,7 @@ async function callApi(apiKey: string | null, endpoint: string, toolName: string
     // rimuoviamo per tenere il contesto LLM leggero (i token costano).
     const data = (body as { data?: { geometry?: unknown } }).data;
     if (data && 'geometry' in data) delete data.geometry;
+    translateToEnglish(body);
     return JSON.stringify(body, null, 2);
   } catch (e) {
     logMcpUsage({
