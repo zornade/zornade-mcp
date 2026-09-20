@@ -1,3 +1,5 @@
+[![Zornade MCP - Italian Cadastre, Geospatial & Real Estate Data MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/zornade/zornade-mcp/badges/score.svg)](https://glama.ai/mcp/servers/zornade/zornade-mcp)
+
 # Zornade MCP - Italian Cadastre, Geospatial & Real Estate Data
 
 Model Context Protocol server for Italian cadastral, geospatial and real
