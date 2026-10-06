@@ -56,6 +56,23 @@ Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
+Cursor: [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=zornade&config=eyJ1cmwiOiJodHRwczovL21jcC56b3JuYWRlLmNvbS9tY3AiLCJoZWFkZXJzIjp7IngtYXBpLWtleSI6Inpybl9ZT1VSX0tFWSJ9fQ==),
+or in `.cursor/mcp.json` (project) / `~/.cursor/mcp.json` (global):
+
+```json
+{
+  "mcpServers": {
+    "zornade": {
+      "url": "https://mcp.zornade.com/mcp",
+      "headers": { "x-api-key": "zrn_YOUR_KEY" }
+    }
+  }
+}
+```
+
+VS Code, Cline and other clients that read the standard `mcpServers` shape use
+the same JSON as Cursor.
+
 ## Test
 
 ```bash
@@ -96,10 +113,29 @@ are.
 ## Architecture
 
 - `functions/mcp/index.ts` - Supabase Edge Function (Deno), built with
-  [mcp-lite](https://github.com/fiberplane/mcp-lite) + Hono, streamable HTTP
-  transport. Pattern from the official Supabase MCP guide.
+  [mcp-lite](https://github.com/fiberplane/mcp-lite) 0.10.0 + Hono, streamable
+  HTTP transport. Pattern from the official Supabase MCP guide.
+- `functions/mcp/tools.ts` - tool definitions shared by both transports, with
+  `title` and `annotations` (`readOnlyHint`, `idempotentHint`, `openWorldHint`).
+- `functions/mcp/stdio.ts` - stdio entrypoint, used by the Docker image and by
+  wrapper tools that spawn a child process.
 - `netlify.toml` + `public/` - Netlify reverse proxy for the clean hostname
   `mcp.zornade.com` (no build step).
+
+## Distribution
+
+| Where | Entry |
+| --- | --- |
+| Official MCP Registry | `io.github.zornade/zornade-mcp`, from `server.json` in this repo |
+| Glama | [glama.ai/mcp/servers/zornade/zornade-mcp](https://glama.ai/mcp/servers/zornade/zornade-mcp) |
+| public-apis | [MCP Servers table](https://github.com/public-apis/public-apis/pull/7617), pull request open |
+
+The registry manifest is republished after every version bump:
+
+```bash
+mcp-publisher validate   # offline check against the published schema
+mcp-publisher publish    # requires `mcp-publisher login github` once
+```
 
 ## Documentation
 

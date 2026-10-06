@@ -5,6 +5,38 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-05
+
+Tool metadata for directories and clients, plus packaging fixes.
+
+### Added
+
+- `title` and `annotations` (`readOnlyHint`, `idempotentHint`,
+  `openWorldHint`, `audience`) on all six tools, per MCP specification
+  2025-06-18. The Claude connectors directory requires every tool to expose a
+  `title` plus `readOnlyHint` or `destructiveHint`, and the other clients use
+  the hints to skip confirmation prompts on read-only calls. Exposed on both
+  transports.
+- `server.json`, the manifest for the official MCP Registry
+  (`registry.modelcontextprotocol.io`): publishes `io.github.zornade/zornade-mcp`
+  with the remote endpoint and the `x-api-key` header declaration.
+- "Add to Cursor" install link in the README
+  (`cursor://anysphere.cursor-deeplink/mcp/install?...`).
+
+### Changed
+
+- `mcp-lite` 0.8.2 to 0.10.0, which is the first release with tool annotation
+  support. The Host and Origin validation introduced in 0.9.0 is opt-in and
+  stays disabled: it runs only when `allowedHosts` or `allowedOrigins` is
+  passed to the transport, so the Netlify proxy path is unaffected.
+
+### Fixed
+
+- Dockerfile: the build copied only `functions/mcp/index.ts`, so `deno cache`
+  failed on the `./tools.ts` import added with the shared tools module, and the
+  image could not be built. The whole `functions/mcp/` directory is copied now
+  and both entrypoints (`index.ts`, `stdio.ts`) are cached.
+
 ## [1.0.0] - 2026-09-19
 
 First public release.

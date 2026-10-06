@@ -17,12 +17,39 @@ export interface ToolTextResult {
   isError?: boolean;
 }
 
+// Annotazioni MCP (spec 2025-06-18). Servono a due cose concrete: la directory
+// dei connettori di Claude richiede che OGNI tool abbia `title` e
+// `readOnlyHint` o `destructiveHint`, e gli altri client (Cursor, Copilot,
+// Cline) usano i hint per decidere se chiedere conferma prima di eseguire.
+export interface ToolAnnotations {
+  title?: string;
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+  audience?: Array<'user' | 'assistant'>;
+  priority?: number;
+}
+
 export interface ToolDef {
   name: string;
+  title: string;
   description: string;
   inputSchema: z.ZodTypeAny;
+  annotations: ToolAnnotations;
   handler: (args: Record<string, unknown>) => Promise<ToolTextResult>;
 }
+
+// Tutti i sei tool sono di sola lettura: leggono dati catastali e geografici
+// pubblici dall'API v2 e non modificano niente, né da noi né da terzi. Sono
+// idempotenti (stessa query, stesso risultato) e "open world" perché la
+// risposta arriva da un sistema esterno al server MCP.
+const READ_ONLY: ToolAnnotations = {
+  readOnlyHint: true,
+  idempotentHint: true,
+  openWorldHint: true,
+  audience: ['assistant'],
+};
 
 interface ApiErrorBody {
   error?: string;
@@ -46,6 +73,92 @@ export function extractApiKey(req: Request): string | null {
   return null;
 }
 
+// ─── OAuth 2.1: accesso MCP senza incollare una chiave ─────────────────────
+//
+// Il client MCP puo' autenticarsi in due modi: con la chiave API nell'header
+// x-api-key (come sempre), oppure con un access token Supabase nel Bearer, che
+// e' quello che usano i client che fanno il flusso OAuth (Claude, Cursor,
+// Postman). Nel secondo caso l'utente non ha nessuna chiave da incollare: la
+// chiave personale gliela mintiamo al primo collegamento con
+// `ensure_mcp_token`, che la registra in api_tokens (solo hash) e ne conserva
+// il valore in chiaro in Supabase Vault.
+
+/** Access token Supabase presente nel Bearer (null se assente o se e' una chiave zrn_). */
+export function extractSupabaseToken(req: Request): string | null {
+  const auth = req.headers.get('authorization');
+  if (!auth?.startsWith('Bearer ')) return null;
+  const token = auth.slice(7).trim();
+  if (!token || token.startsWith('zrn_')) return null;
+  return token;
+}
+
+/**
+ * Valida un access token Supabase e restituisce l'id dell'utente.
+ *
+ * Verifica lato Auth server (`/auth/v1/user`) invece di controllare la firma in
+ * locale: cosi' funziona anche con la chiave JWT simmetrica, senza dipendere
+ * dal JWKS, che oggi e' vuoto. Il costo e' un giro di rete in piu' per
+ * richiesta, accettabile perche' l'handshake avviene una volta per chiamata.
+ */
+export async function utenteDaTokenSupabase(token: string): Promise<string | null> {
+  const url = Deno.env.get('SUPABASE_URL');
+  const anon = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!url || !anon) return null;
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey: anon, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const dati = (await res.json()) as { id?: string };
+    return dati?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Cache utente -> chiave, per la vita dell'isolato: evita un RPC a ogni chiamata. */
+const _chiaveCache = new Map<string, { chiave: string; scadenza: number }>();
+const TTL_CHIAVE_MS = 10 * 60 * 1000;
+
+/**
+ * Chiave API dell'utente per l'accesso MCP, creandola alla prima chiamata.
+ * Richiede il service role: la funzione nel database revoca EXECUTE ad anon e
+ * authenticated proprio perche' consegna un segreto in chiaro.
+ */
+export async function chiaveMcpDaUtente(userId: string): Promise<string | null> {
+  const inCache = _chiaveCache.get(userId);
+  if (inCache && inCache.scadenza > Date.now()) return inCache.chiave;
+
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return null;
+
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/ensure_mcp_token`, {
+      method: 'POST',
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_user_id: userId }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      console.error('ensure_mcp_token failed:', res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const chiave = (await res.json()) as unknown;
+    if (typeof chiave !== 'string' || !chiave.startsWith('zrn_')) return null;
+    _chiaveCache.set(userId, { chiave, scadenza: Date.now() + TTL_CHIAVE_MS });
+    return chiave;
+  } catch (e) {
+    console.error('ensure_mcp_token error:', (e as Error).message);
+    return null;
+  }
+}
+
 // ─── Logging usage (tabella mcp_usage, fire-and-forget) ─────────────────────
 
 let _usageDb: SupabaseClient | null = null;
@@ -60,24 +173,56 @@ function usageDb(): SupabaseClient | null {
   return _usageDb;
 }
 
+// Chiave -> id del token, con l'impronta SHA-256 su cui `api-v2` autentica le
+// richieste: cosi' il conteggio MCP e il conteggio REST sono attribuiti alla
+// stessa riga di `api_tokens`, senza confrontare prefissi troncati.
+//
+// La lettura e' DIRETTA su api_tokens e non passa da `validate_api_key`: quella
+// funzione incrementa `total_requests` e `last_used_at` come effetto collaterale,
+// quindi chiamarla qui conterebbe due volte la stessa chiamata (una per l'API,
+// una per il log dell'MCP).
+const _tokenCache = new Map<string, string | null>();
+
+async function hashChiave(apiKey: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(apiKey));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function tokenIdDaChiave(db: SupabaseClient, apiKey: string): Promise<string | null> {
+  const hash = await hashChiave(apiKey);
+  const inCache = _tokenCache.get(hash);
+  if (inCache !== undefined) return inCache;
+  const { data, error } = await db.from('api_tokens').select('id').eq('token_hash', hash).maybeSingle();
+  const id = error || !data ? null : (data as { id: string }).id;
+  // Anche una chiave non risolta resta in cache: una chiave cancellata non deve
+  // provocare una query a ogni chiamata.
+  _tokenCache.set(hash, id);
+  return id;
+}
+
 export function logMcpUsage(entry: {
   tool: string;
   status?: string;
   statusCode?: number | null;
   durationMs?: number | null;
-  tokenPrefix?: string | null;
+  /** Chiave API della chiamata: da qui si ricava il token a cui attribuirla. */
+  apiKey?: string | null;
   client?: string | null;
 }): void {
   const db = usageDb();
   if (!db) return;
   void (async () => {
     try {
+      const tokenId = entry.apiKey ? await tokenIdDaChiave(db, entry.apiKey) : null;
       const r = await db.from('mcp_usage').insert({
         tool: entry.tool,
         status: entry.status ?? 'ok',
         status_code: entry.statusCode ?? null,
         duration_ms: entry.durationMs ?? null,
-        token_prefix: entry.tokenPrefix ?? null,
+        token_prefix: entry.apiKey ? entry.apiKey.slice(0, 8) : null,
+        token_id: tokenId,
         client: entry.client ?? null,
       });
       if (r.error) console.error('mcp_usage insert failed:', r.error.message);
@@ -157,7 +302,7 @@ async function callApi(apiKey: string | null, endpoint: string, toolName: string
       status: r.ok ? 'ok' : 'error',
       statusCode: r.status,
       durationMs: ms,
-      tokenPrefix: apiKey.slice(0, 8),
+      apiKey,
     });
     if (!r.ok) {
       const err = (body ?? {}) as ApiErrorBody;
@@ -174,7 +319,7 @@ async function callApi(apiKey: string | null, endpoint: string, toolName: string
       tool: toolName,
       status: 'error',
       durationMs: Date.now() - started,
-      tokenPrefix: apiKey.slice(0, 8),
+      apiKey,
     });
     if ((e as Error).name === 'AbortError') {
       return 'ERROR: Zornade API call timed out after 20 seconds.';
@@ -194,6 +339,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
   return [
     {
       name: 'zornade_geocode_search',
+      title: 'Geocode Italian addresses',
+      annotations: READ_ONLY,
       description:
         'Forward geocoding for Italian addresses. Searches the ANNCSU street archive ' +
         '(18.7+ million addresses) by street name and optional municipality. ' +
@@ -215,6 +362,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
     },
     {
       name: 'zornade_geocode_reverse',
+      title: 'Reverse geocode coordinates to addresses',
+      annotations: READ_ONLY,
       description:
         'Reverse geocoding: find Italian addresses near WGS84 coordinates. ' +
         'Returns the closest ANNCSU addresses with distance in meters.',
@@ -236,6 +385,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
     },
     {
       name: 'zornade_parcel_by_id',
+      title: 'Get cadastral parcel profile',
+      annotations: READ_ONLY,
       description:
         'Enriched cadastral parcel profile by FID or GML ID. ' +
         'Returns municipality, area, cadastral reference, and the requested data sections ' +
@@ -262,6 +413,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
     },
     {
       name: 'zornade_parcel_locate',
+      title: 'Find cadastral parcels by coordinates or bounding box',
+      annotations: READ_ONLY,
       description:
         'Find cadastral parcels by coordinates or bounding box. Three modes: ' +
         'single point (lat+lng), multiple points (points="lat,lng;lat,lng", max 10), ' +
@@ -307,6 +460,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
     },
     {
       name: 'zornade_parcel_search',
+      title: 'Search parcels by cadastral reference',
+      annotations: READ_ONLY,
       description:
         'Search cadastral parcels by cadastral reference: municipality (fuzzy match), ' +
         'sheet number (foglio), parcel label, optional section. ' +
@@ -337,6 +492,8 @@ export function buildTools(apiKey: string | null): ToolDef[] {
     },
     {
       name: 'zornade_admin_lists',
+      title: 'List Italian regions, provinces and municipalities',
+      annotations: READ_ONLY,
       description:
         'Italian administrative reference data: regions, provinces, or municipalities. ' +
         'Provinces can be filtered by region; municipalities by province or region.',

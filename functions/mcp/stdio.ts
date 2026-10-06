@@ -46,11 +46,11 @@ async function handleRequest(msg: {
         protocolVersion?: string;
         clientInfo?: { name?: string };
       };
-      logMcpUsage({ tool: 'initialize', client: params.clientInfo?.name ?? null });
+      logMcpUsage({ tool: 'initialize', client: params.clientInfo?.name ?? null, apiKey });
       reply(id, {
         protocolVersion: params.protocolVersion ?? '2025-06-18',
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'zornade', version: '1.0.0' },
+        serverInfo: { name: 'zornade', version: '1.1.0' },
         instructions:
           'Zornade MCP server (stdio). Italian cadastral, geospatial and real estate data via the Zornade API v2.',
       });
@@ -63,7 +63,9 @@ async function handleRequest(msg: {
       reply(id, {
         tools: tools.map((t) => ({
           name: t.name,
+          title: t.title,
           description: t.description,
+          annotations: t.annotations,
           inputSchema: z.toJSONSchema(t.inputSchema),
         })),
       });

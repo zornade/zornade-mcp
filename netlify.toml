@@ -35,9 +35,29 @@
   status = 200
   force = true
 
+# RFC 9728 ammette anche la variante con il path del resource in coda
+# (/.well-known/oauth-protected-resource/mcp). Noi pubblichiamo solo il file
+# "puro" e indichiamo quello nell'header WWW-Authenticate, che e' la via che i
+# client devono seguire; questa rewrite serve solo ai client che provano a
+# costruirsi l'URL da soli. Su filesystem non si possono avere insieme un file
+# e una directory con lo stesso nome, quindi si risolve con una rewrite.
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource/mcp"
+  to = "/.well-known/oauth-protected-resource"
+  status = 200
+  force = true
+
 # ---------------------------------------------------------------------------
 # Security headers
 # ---------------------------------------------------------------------------
+# Il documento di protected resource OAuth (RFC 9728) e' un file senza
+# estensione: Netlify lo servirebbe come application/octet-stream e alcuni
+# client MCP rifiutano di interpretarlo. Va servito come JSON.
+[[headers]]
+  for = "/.well-known/*"
+  [headers.values]
+    Content-Type = "application/json"
+
 # Note: headers declared here apply to responses Netlify itself serves
 # (the static landing page). For proxied responses, upstream headers
 # (CORS, ...) are preserved as returned by Supabase.

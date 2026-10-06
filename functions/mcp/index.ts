@@ -20,10 +20,41 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Hono, type Context } from 'npm:hono@4.6.14';
-import { McpServer, StreamableHttpTransport } from 'npm:mcp-lite@0.8.2';
+import { McpServer, StreamableHttpTransport } from 'npm:mcp-lite@0.10.0';
 import { z } from 'npm:zod@4.1.12';
-import { buildTools, extractApiKey, logMcpUsage } from './tools.ts';
+import { buildTools, extractApiKey, extractSupabaseToken, utenteDaTokenSupabase, chiaveMcpDaUtente, logMcpUsage } from './tools.ts';
 import type { ToolTextResult } from './tools.ts';
+
+// Documento di protected resource (RFC 9728), servito dal sito Netlify su
+// mcp.zornade.com: dice al client MCP qual e' il server di autorizzazione.
+// L'URL e' quello pubblico, non quello interno di Supabase, perche' e' il
+// client a doverlo leggere.
+const RESOURCE_METADATA_URL = 'https://mcp.zornade.com/.well-known/oauth-protected-resource';
+
+// 401 conforme: senza questo header i client OAuth (Claude in primis) non
+// sanno dove andare a fare il login e la connessione fallisce senza spiegazioni.
+function rispostaNonAutenticato(tokenNonValido: boolean): Response {
+  const headers: Record<string, string> = {
+    ...CORS,
+    'Content-Type': 'application/json',
+    'WWW-Authenticate':
+      `Bearer resource_metadata="${RESOURCE_METADATA_URL}"` +
+      (tokenNonValido ? ', error="invalid_token"' : ''),
+  };
+  return new Response(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: null,
+      error: {
+        code: -32001,
+        message: tokenNonValido
+          ? "Access token non valido o scaduto. Rifai il flusso OAuth, oppure usa una chiave API Zornade nell'header x-api-key."
+          : "Autenticazione richiesta: chiave API Zornade nell'header x-api-key, oppure access token nel Bearer (OAuth 2.1). Chiavi gratuite su https://app.zornade.com/api.",
+      },
+    }),
+    { status: 401, headers },
+  );
+}
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -36,13 +67,18 @@ const CORS: Record<string, string> = {
 function createMcp(apiKey: string | null): McpServer {
   const mcp = new McpServer({
     name: 'zornade',
-    version: '1.0.0',
+    version: '1.1.0',
     schemaAdapter: (schema) => z.toJSONSchema(schema as z.ZodType),
   });
 
   for (const tool of buildTools(apiKey)) {
     mcp.tool(tool.name, {
       description: tool.description,
+      // title + annotations (spec MCP 2025-06-18): richiesti dalla directory
+      // dei connettori di Claude, usati dagli altri client per i hint di
+      // sola lettura. Supportati da mcp-lite dalla 0.10.0.
+      title: tool.title,
+      annotations: tool.annotations,
       inputSchema: tool.inputSchema,
       handler: tool.handler as (
         args: Record<string, unknown>,
@@ -60,12 +96,12 @@ const mcpApp = new Hono();
 mcpApp.get('/', (c) =>
   c.json({
     name: 'Zornade MCP server',
-    version: '1.0.0',
+    version: '1.1.0',
     description:
       'MCP (Model Context Protocol) server for Zornade API v2: Italian cadastral parcels, geocoding and administrative data.',
     mcp_endpoint: `${new URL(c.req.url).origin}/mcp`,
     authentication:
-      'Send your free Zornade API key (zrn_...) via x-api-key header, Authorization: Bearer, or ?api_key= query parameter. Get one at https://app.zornade.com/api',
+      'Send your free Zornade API key (zrn_...) via x-api-key header, Authorization: Bearer, or ?api_key= query parameter. Get one at https://app.zornade.com/api. OAuth 2.1 is also supported: protected resource metadata at https://mcp.zornade.com/.well-known/oauth-protected-resource',
     documentation: 'https://api.zornade.com',
   }),
 );
@@ -74,25 +110,63 @@ mcpApp.get('/', (c) =>
 // (radice) cosi' che il container Docker risponda anche a chi prova la radice
 // (es. check automatizzati tipo Glama). Su Supabase il platform inoltra solo
 // richieste sotto /mcp, quindi la rotta / e' inerte in produzione.
+// Nome con cui si presenta il nostro cron di uptime (ogni 5 minuti).
+// L'uptime vive in `mcp_health`, con status e latenza per target, quindi
+// registrarlo anche qui non aggiunge informazione e falsa le letture: senza
+// questo filtro il 94% degli eventi "initialize" e' il nostro healthcheck e le
+// dashboard MCP raccontano una storia gonfiata di circa quattro volte.
+const CLIENT_HEALTHCHECK = 'grafana-healthcheck';
+
+// Forma minima del body JSON-RPC che ci serve ispezionare prima del transport:
+// il metodo (per distinguere le chiamate ai tool dall'handshake) e il nome del
+// client che si presenta con initialize (per il monitoraggio in Grafana).
+type McpBody = { method?: string; params?: { clientInfo?: { name?: string } } };
+
 async function mcpHandler(c: Context): Promise<Response> {
-  // Log dell'evento initialize (clientInfo.name) per il monitoraggio in
-  // Grafana. Il body viene letto su un clone: la richiesta originale resta
-  // integra per il transport MCP.
+  // Il body si legge una volta su un clone: serve sia al log dell'initialize
+  // sia a capire se la richiesta e' una chiamata a un tool (l'unica che
+  // richiede autenticazione). La richiesta originale resta integra per il
+  // transport MCP.
+  let body: McpBody | null = null;
   try {
-    const clone = c.req.raw.clone();
-    const body = (await clone.json()) as {
-      method?: string;
-      params?: { clientInfo?: { name?: string } };
-    } | null;
-    if (body?.method === 'initialize') {
-      logMcpUsage({ tool: 'initialize', client: body.params?.clientInfo?.name ?? null });
-    }
+    body = (await c.req.raw.clone().json()) as McpBody;
   } catch {
-    // Body assente o non JSON (es. GET per SSE): nessun log.
+    // Body assente o non JSON (es. GET per SSE).
   }
-  // Per ogni richiesta costruiamo il server con la chiave estratta dagli
-  // header: gli handler dei tool la chiudono nel proprio scope.
-  const apiKey = extractApiKey(c.req.raw);
+
+  // Credenziali. Prima la chiave API esplicita; se non c'e', un access token
+  // Supabase nel Bearer (flusso OAuth) diventa una chiave personale mintata al
+  // primo collegamento.
+  let apiKey = extractApiKey(c.req.raw);
+  let tokenNonValido = false;
+  if (!apiKey) {
+    const token = extractSupabaseToken(c.req.raw);
+    if (token) {
+      const utente = await utenteDaTokenSupabase(token);
+      if (utente) apiKey = await chiaveMcpDaUtente(utente);
+      if (!apiKey) tokenNonValido = true;
+    }
+  }
+
+  const nomeClient = body?.params?.clientInfo?.name ?? null;
+  if (body?.method === 'initialize' && nomeClient !== CLIENT_HEALTHCHECK) {
+    // Le sessioni si contano a parte dalle chiamate (nella pagina /api),
+    // perche' un `initialize` non e' una richiesta di dati e non consuma il
+    // limite orario della chiave.
+    logMcpUsage({ tool: 'initialize', client: nomeClient, apiKey });
+  }
+
+  // initialize, tools/list e le notifiche restano accessibili senza
+  // credenziali: ci vivono i check automatici (Glama) e le validazioni delle
+  // directory, che non hanno una chiave. Le chiamate ai tool invece no: li' la
+  // risposta e' un 401 con il puntatore al server di autorizzazione, che e' il
+  // segnale con cui i client conformi avviano il flusso OAuth.
+  if (!apiKey && body?.method === 'tools/call') {
+    return rispostaNonAutenticato(tokenNonValido);
+  }
+
+  // Per ogni richiesta costruiamo il server con la chiave risolta: gli handler
+  // dei tool la chiudono nel proprio scope.
   const mcp = createMcp(apiKey);
   const transport = new StreamableHttpTransport();
   const httpHandler = transport.bind(mcp);

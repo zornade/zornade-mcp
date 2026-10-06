@@ -1,0 +1,211 @@
+{
+  "identifier": "zornade-mcp",
+  "name": "Zornade MCP - Italian Cadastre, Geospatial & Real Estate Data",
+  "version": "1.1.0",
+  "description": "Query Italian cadastral and geospatial data from any MCP client: geocoding on 18.7M+ addresses, enriched cadastral parcel profiles (risk, subsidence, valuation, solar), parcel lookup by coordinates or cadastral reference, and administrative lists. Free API key.",
+  "author": "Zornade",
+  "authorUrl": "https://github.com/zornade",
+  "category": "developer",
+  "cloudEndpoint": "https://mcp.zornade.com/mcp",
+  "homepage": "https://github.com/zornade/zornade-mcp",
+  "icon": "https://zornade.com/icons/icon-192x192.png",
+  "tags": [
+    "italy",
+    "cadastre",
+    "geospatial",
+    "gis",
+    "real-estate",
+    "open-data"
+  ],
+  "tools": [
+    {
+      "name": "zornade_geocode_search",
+      "description": "Forward geocoding for Italian addresses. Searches the ANNCSU street archive (18.7+ million addresses) by street name and optional municipality. Returns matches with WGS84 coordinates, postal code, municipality, province and region. Does NOT find points of interest: search by street name instead.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "q": {
+            "description": "Street name or search text, min 2 chars. Example: \"Via del Corso\"",
+            "type": "string"
+          },
+          "city": {
+            "description": "Municipality name filter. Example: \"Roma\"",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max results, default 10",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zornade_geocode_reverse",
+      "description": "Reverse geocoding: find Italian addresses near WGS84 coordinates. Returns the closest ANNCSU addresses with distance in meters.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "lat": {
+            "description": "Latitude WGS84, Italy bounds 35.5-47.5",
+            "type": "number",
+            "minimum": 35.5,
+            "maximum": 47.5
+          },
+          "lng": {
+            "description": "Longitude WGS84, Italy bounds 6.0-19.0",
+            "type": "number",
+            "minimum": 6,
+            "maximum": 19
+          },
+          "radius": {
+            "description": "Search radius in meters, default 100, max 500",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "limit": {
+            "description": "Max results, default 5",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zornade_parcel_by_id",
+      "description": "Enriched cadastral parcel profile by FID or GML ID. Returns municipality, area, cadastral reference, and the requested data sections (risk, subsidence, terrain, buildings, economics, demographics, valuation, valuation_history, solar, POI, etc.). Geometry is omitted to keep the reply compact.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "fid": {
+            "description": "Parcel FID number (example \"28009975\") or GML ID",
+            "type": "string"
+          },
+          "include": {
+            "description": "Comma-separated sections: risk,subsidence,terrain,population,buildings,economics,demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,cultural_heritage,poi,solar,nightlights. Default: risk,economics,solar,valuation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fid"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zornade_parcel_locate",
+      "description": "Find cadastral parcels by coordinates or bounding box. Three modes: single point (lat+lng), multiple points (points=\"lat,lng;lat,lng\", max 10), or bounding box (bbox=\"minLng,minLat,maxLng,maxLat\", max 0.05 degrees per side). Returns matching parcels with FID, municipality and centroid.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "lat": {
+            "description": "Latitude for single-point mode",
+            "type": "number"
+          },
+          "lng": {
+            "description": "Longitude for single-point mode",
+            "type": "number"
+          },
+          "points": {
+            "description": "Multiple points as \"lat,lng;lat,lng\", max 10 pairs",
+            "type": "string"
+          },
+          "bbox": {
+            "description": "Bounding box as \"minLng,minLat,maxLng,maxLat\", max 0.05 degrees per side",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max results, default 50",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zornade_parcel_search",
+      "description": "Search cadastral parcels by cadastral reference: municipality (fuzzy match), sheet number (foglio), parcel label, optional section. Returns matching parcels with FID, municipality, sheet, area and centroid.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "comune": {
+            "description": "Municipality name, required. Example: \"Roma\"",
+            "type": "string"
+          },
+          "foglio": {
+            "description": "Cadastral sheet number. Example: \"481\"",
+            "type": "string"
+          },
+          "label": {
+            "description": "Parcel label. Example: \"A\" or \"123\"",
+            "type": "string"
+          },
+          "sezione": {
+            "description": "Administrative section. Example: \"A\"",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max results, default 20",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "comune"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zornade_admin_lists",
+      "description": "Italian administrative reference data: regions, provinces, or municipalities. Provinces can be filtered by region; municipalities by province or region.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Which administrative list to return",
+            "type": "string",
+            "enum": [
+              "regions",
+              "provinces",
+              "municipalities"
+            ]
+          },
+          "region": {
+            "description": "Filter by region name (provinces, municipalities)",
+            "type": "string"
+          },
+          "province": {
+            "description": "Filter by province name (municipalities)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

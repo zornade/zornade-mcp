@@ -1,0 +1,14 @@
+{
+  "resource": "https://mcp.zornade.com/mcp",
+  "authorization_servers": [
+    "https://wupqwfqjfpwrapgnogjv.supabase.co/auth/v1"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "scopes_supported": [
+    "email",
+    "profile"
+  ],
+  "resource_documentation": "https://zornade.com/documentation/"
+}
