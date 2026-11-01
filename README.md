@@ -178,6 +178,7 @@ Two distinct layers:
 Every API response lists the applicable licenses in `meta.licenses` and the
 required attribution text. Two attribution levels exist: source attributions
 are always mandatory; the "Dati elaborati da Zornade" attribution with link to
-zornade.com is required for free plan keys and can be waived with a commercial
-license (the response field `meta.zornade_attribution_required` tells you
-which rule applies). Full terms: [zornade.com](https://zornade.com/terms/).
+zornade.com is required for free plan keys and can be waived with a
+[commercial license](https://zornade.com/licenza-commerciale/?utm_source=zornade-mcp&utm_medium=github_readme&utm_campaign=mcp_license_note&utm_content=licenza_commerciale)
+(the response field `meta.zornade_attribution_required` tells you which rule
+applies). Full data terms: [zornade.com](https://zornade.com/terms/).

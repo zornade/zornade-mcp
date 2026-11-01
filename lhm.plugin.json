@@ -1,5 +1,5 @@
 {
-  "identifier": "zornade-mcp",
+  "identifier": "zornade-zornade-mcp",
   "name": "Zornade MCP - Italian Cadastre, Geospatial & Real Estate Data",
   "version": "1.1.0",
   "description": "Query Italian cadastral and geospatial data from any MCP client: geocoding on 18.7M+ addresses, enriched cadastral parcel profiles (risk, subsidence, valuation, solar), parcel lookup by coordinates or cadastral reference, and administrative lists. Free API key.",
@@ -97,7 +97,7 @@
             "type": "string"
           },
           "include": {
-            "description": "Comma-separated sections: risk,subsidence,terrain,population,buildings,economics,demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,cultural_heritage,poi,solar,nightlights. Default: risk,economics,solar,valuation",
+            "description": "Comma-separated sections: risk,subsidence,terrain,population,buildings,economics,demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,cultural_heritage,poi,solar,nightlights,nightlights_v2. Default: risk,economics,solar,valuation. Use nightlights_v2 for night-time light: VIIRS sampled at the parcel's own point, requested by name (not part of all). nightlights is deprecated (removal 2027-04-12).",
             "type": "string"
           }
         },

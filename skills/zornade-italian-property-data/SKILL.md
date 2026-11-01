@@ -62,10 +62,18 @@ If the user gives the cadastral reference instead of an address, skip to
   `radius` in metres max 500 (default 100), `limit` max 20 (default 5).
 - `zornade_parcel_by_id`: `fid` accepts the numeric FID **or** a GML ID.
   `include` is a comma-separated list of sections:
-  `risk,subsidence,terrain,population,buildings,economics,demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,cultural_heritage,poi,solar,nightlights`.
+  `risk,subsidence,terrain,population,buildings,economics,demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,cultural_heritage,poi,solar,nightlights,nightlights_v2`.
   Default is `risk,economics,solar,valuation`. Add `valuation_history`,
   `subsidence` or `poi` only when the question actually needs them: each extra
   section enlarges the reply. Geometry is omitted on purpose.
+  For night-time light use **`nightlights_v2`**: it is VIIRS sampled at the
+  parcel's own point (`ntl_pixel`, with `ntl_local_mean`, `ntl_local_max` and the
+  distance to the nearest lit pixel), so the value is a measurement. It must be
+  requested by name and is not part of `all`; parcels not processed yet come back
+  with `available: false`. The older `nightlights` section
+  (`ntl_parcel`, `ntl_density`, `ntl_share`, `ntl_mean_comune`) is a municipal
+  estimate distributed onto the building footprint, is **deprecated** (removal
+  2027-04-12) and must not be used for a single parcel.
 - `zornade_parcel_locate`: **exactly one** of `lat`+`lng`, `points`
   (`"lat,lng;lat,lng"`, max 10 pairs), or `bbox`
   (`"minLng,minLat,maxLng,maxLat"`, max **0.05° per side**). `limit` max 200 (default 50).

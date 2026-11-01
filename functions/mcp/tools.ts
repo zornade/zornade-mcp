@@ -400,7 +400,11 @@ export function buildTools(apiKey: string | null): ToolDef[] {
           .describe(
             'Comma-separated sections: risk,subsidence,terrain,population,buildings,economics,' +
               'demographics,land_cover,land_use,valuation,valuation_history,coastal_erosion,' +
-              'cultural_heritage,poi,solar,nightlights. Default: risk,economics,solar,valuation',
+              'cultural_heritage,poi,solar,nightlights,nightlights_v2. ' +
+              'Default: risk,economics,solar,valuation. ' +
+              'nightlights_v2 is the current VIIRS per-parcel section (measurement, not an estimate) ' +
+              'and must be requested by name: it is not part of all. nightlights is deprecated ' +
+              '(removal 2027-04-12).',
           ),
       }),
       handler: async (raw: Record<string, unknown>) => {

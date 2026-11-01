@@ -1,0 +1,19 @@
+version: 2
+
+# Le import Deno di functions/mcp avvengono via URL: non c'e' un manifest che
+# Dependabot possa seguire, quindi qui si tengono aggiornate la base container e
+# le action. Il limite e' dichiarato in SECURITY.md.
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "docker"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
