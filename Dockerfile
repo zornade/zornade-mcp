@@ -6,7 +6,7 @@
 # il container espone l'endpoint MCP (streamable HTTP) sulla porta 8000.
 # ─────────────────────────────────────────────────────────────────────────────
 
-FROM denoland/deno:2.4.1
+FROM denoland/deno:2.9.8
 
 WORKDIR /app
 
