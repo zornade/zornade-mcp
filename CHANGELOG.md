@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-01
+
+Registry metadata, licence and support surfaced to clients, and a landing page
+that states what the server costs.
+
+### Changed
+
+- `server.json`: added `repository.id` (the stable GitHub repo id, which lets
+  registries detect a deleted-and-recreated repository), a 512x512 `icons`
+  entry, and `websiteUrl` pointing at `https://mcp.zornade.com` instead of the
+  marketing home, so a client that follows the manifest lands on setup
+  instructions rather than a product page.
+- The `x-api-key` header is no longer `isRequired`. The server accepts OAuth 2.1
+  through Supabase and mints a personal key on first connection, so clients that
+  sign in should not be forced to paste a key. The description now says which
+  case is which.
+- `serverInfo.version` and the root JSON manifest report `1.2.0` on both
+  transports (HTTP and stdio), so the running server and the registry entry
+  agree.
+- The root JSON manifest now exposes `website`, `pricing`, `licence`, `support`
+  and `status` next to `documentation`. An agent that only reads that endpoint
+  can find the commercial terms without crawling the site.
+
+### Added
+
+- `mcp.zornade.com` landing: the six tools with their annotations, the two
+  authentication paths, and the price list (free with attribution, licence from
+  490 EUR/year, support contract from 1.800 EUR/year with a 4.800 EUR tier).
+  The page used to stop at the endpoint.
+
 ## [1.1.0] - 2026-10-05
 
 Tool metadata for directories and clients, plus packaging fixes.

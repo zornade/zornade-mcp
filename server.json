@@ -1,11 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.zornade/zornade-mcp",
-  "title": "Zornade MCP - Italian Cadastre, Geospatial and Real Estate Data",
-  "description": "Italian cadastral parcels, geocoding, OMI valuations, risk and demographic data. 85M parcels.",
-  "version": "1.1.0",
-  "websiteUrl": "https://zornade.com",
+  "title": "Zornade - Italian Cadastre, Geospatial and Real Estate Data",
+  "description": "Italian cadastre for AI agents: 85M parcels, geocoding, OMI values, risk layers.",
+  "version": "1.2.0",
+  "websiteUrl": "https://mcp.zornade.com",
+  "icons": [
+    {
+      "src": "https://zornade.com/icons/icon-512x512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
   "repository": {
+    "id": "R_kgDOUhunAg",
     "url": "https://github.com/zornade/zornade-mcp",
     "source": "github"
   },
@@ -16,8 +24,8 @@
       "headers": [
         {
           "name": "x-api-key",
-          "description": "Zornade API key (zrn_...). Free from https://app.zornade.com/api",
-          "isRequired": true,
+          "description": "Optional. Free Zornade API key (zrn_...) from https://app.zornade.com/api. Skip it if your client signs in with OAuth: the server mints a personal key on first connection.",
+          "isRequired": false,
           "isSecret": true
         }
       ]
