@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>Zornade MCP</title>
+    <title>Zornade MCP - Italian cadastral data for AI agents</title>
     <style>
       :root { color-scheme: light dark; }
       body {
@@ -32,33 +32,54 @@
   <body>
     <h1>Zornade MCP</h1>
     <p class="muted">
-      Model Context Protocol server for Italian cadastral data, geocoding and
-      administrative lists. Powered by the
-      <a href="https://api.zornade.com">Zornade API v2</a>.
+      Model Context Protocol server for Italian cadastral data: 85 million parcels
+      with OMI valuations, hydrogeological and seismic risk, subsidence, solar
+      potential and planning constraints. Six read-only tools, no writes anywhere.
+      Powered by the <a href="https://api.zornade.com">Zornade API v2</a>.
     </p>
 
     <h2>Endpoint</h2>
     <pre>https://mcp.zornade.com/mcp</pre>
+    <p class="muted">
+      Streamable HTTP, protocol revision 2025-06-18. Server version 1.2.0.
+      Listed in the official MCP Registry as
+      <code>io.github.zornade/zornade-mcp</code>.
+    </p>
 
     <h2>Authentication</h2>
+    <p>Two ways in, and you only need one.</p>
     <p>
-      A free Zornade API key (<code>zrn_...</code>, from
-      <a href="https://app.zornade.com/api">app.zornade.com/api</a>) must be
-      sent as <code>x-api-key</code> header, <code>Authorization: Bearer</code>,
-      or <code>?api_key=</code> query parameter.
+      <strong>OAuth 2.1</strong>, for clients that support it (Claude, Cursor,
+      VS Code). No key to paste: the server mints a personal API key on first
+      connection and stores only its hash. Protected resource metadata at
+      <code>/.well-known/oauth-protected-resource</code>.
+    </p>
+    <p>
+      <strong>API key</strong>, for everything else. A free key
+      (<code>zrn_...</code>, from <a href="https://app.zornade.com/api">app.zornade.com/api</a>)
+      goes in the <code>x-api-key</code> header, in <code>Authorization: Bearer</code>,
+      or in the <code>?api_key=</code> query parameter.
     </p>
 
     <h2>Tools</h2>
-    <pre>zornade_geocode_search   Forward geocoding (ANNCSU streets)
-zornade_geocode_reverse  Reverse geocoding by coordinates
-zornade_parcel_by_id     Enriched cadastral parcel profile
+    <pre>zornade_geocode_search   Forward geocoding on ANNCSU street data
+zornade_geocode_reverse  Reverse geocoding from coordinates
+zornade_parcel_by_id     Enriched parcel profile: cadastral, OMI, risk, solar
 zornade_parcel_locate    Parcels by point(s) or bounding box
-zornade_parcel_search    Parcels by comune, foglio, label
-zornade_admin_lists      Regions, provinces, municipalities</pre>
+zornade_parcel_search    Parcels by comune, foglio and parcel label
+zornade_admin_lists      Regions, provinces and municipalities</pre>
+    <p class="muted">
+      All six are annotated <code>readOnlyHint: true</code> and
+      <code>idempotentHint: true</code>, so clients can call them without asking
+      for confirmation on every step.
+    </p>
 
-    <h2>Connect (Claude Code)</h2>
+    <h2>Connect</h2>
+    <p>Claude Code, with a key:</p>
     <pre>claude mcp add zornade -t http https://mcp.zornade.com/mcp \
   --header "x-api-key: zrn_YOUR_KEY"</pre>
+    <p>Claude Desktop and Cursor, with OAuth: add the URL and sign in when asked.</p>
+    <pre>https://mcp.zornade.com/mcp</pre>
 
     <h2>Test</h2>
     <pre>curl -X POST https://mcp.zornade.com/mcp \
@@ -67,10 +88,33 @@ zornade_admin_lists      Regions, provinces, municipalities</pre>
   -H "x-api-key: zrn_YOUR_KEY" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</pre>
 
+    <h2>Cost and licence</h2>
+    <p>
+      The server and the API are free with the attribution
+      «Dati elaborati da Zornade» visible in your product. The commercial
+      licence removes that one line and nothing else: source attributions
+      (Agenzia delle Entrate, ISTAT, ISPRA, INGV, Copernicus) stay mandatory,
+      and the rate limit does not change.
+    </p>
+    <pre>Free                    10.000 requests/hour, attribution required
+Licenza API             490 EUR/year per company
+Licenza visura-api      990 EUR/year per company
+Continuita Base         1.800 EUR/year, first response in 1 business day
+Continuita Ops          4.800 EUR/year, first response in 4 business hours</pre>
     <p class="muted">
-      Documentation:
-      <a href="https://api.zornade.com">api.zornade.com</a> ·
-      <a href="https://app.zornade.com/api">API keys</a>
+      Priced per company, never per user and never per call. The support contract
+      is a written response time with an S1-S4 severity matrix and service
+      credits, not an uptime promise.
+    </p>
+
+    <p class="muted">
+      <a href="https://zornade.com/pricing">Prezzi</a> ·
+      <a href="https://zornade.com/licenza-commerciale">Licenza commerciale</a> ·
+      <a href="https://zornade.com/continuita">Supporto e continuità</a> ·
+      <a href="https://zornade.com/stato">Stato dei servizi</a> ·
+      <a href="https://app.zornade.com/api">Documentazione API</a> ·
+      <a href="/manifest.json">manifest.json</a> ·
+      <a href="https://github.com/zornade/zornade-mcp">Codice (MIT)</a>
     </p>
   </body>
 </html>

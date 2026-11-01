@@ -1,0 +1,90 @@
+{
+  "name": "zornade",
+  "title": "Zornade MCP - Italian cadastral data for AI agents",
+  "version": "1.2.0",
+  "protocolVersion": "2025-06-18",
+  "description": "Model Context Protocol server for Italian cadastral data: 85 million parcels with OMI valuations, hydrogeological and seismic risk, subsidence, solar potential and planning constraints. Six read-only tools.",
+  "endpoint": "https://mcp.zornade.com/mcp",
+  "transport": "streamable-http",
+  "authentication": {
+    "oauth": {
+      "supported": true,
+      "protectedResourceMetadata": "https://mcp.zornade.com/.well-known/oauth-protected-resource"
+    },
+    "apiKey": {
+      "header": "x-api-key",
+      "alternativeHeaders": ["Authorization: Bearer <key>"],
+      "queryParameter": "api_key",
+      "prefix": "zrn_",
+      "obtainAt": "https://app.zornade.com/api",
+      "required": false
+    }
+  },
+  "tools": [
+    {
+      "name": "zornade_geocode_search",
+      "title": "Geocode Italian addresses",
+      "readOnly": true,
+      "description": "Forward geocoding on ANNCSU street data: address to coordinates and cadastral reference."
+    },
+    {
+      "name": "zornade_geocode_reverse",
+      "title": "Reverse geocode coordinates to addresses",
+      "readOnly": true,
+      "description": "Coordinates to the nearest addresses and administrative units."
+    },
+    {
+      "name": "zornade_parcel_by_id",
+      "title": "Get cadastral parcel profile",
+      "readOnly": true,
+      "description": "Enriched profile of a parcel: cadastral data, OMI valuation, hydrogeological and seismic risk, subsidence, solar potential."
+    },
+    {
+      "name": "zornade_parcel_locate",
+      "title": "Find parcels by coordinates or bounding box",
+      "readOnly": true,
+      "description": "Parcels intersecting a point, a list of points or a bounding box."
+    },
+    {
+      "name": "zornade_parcel_search",
+      "title": "Search parcels by cadastral reference",
+      "readOnly": true,
+      "description": "Parcels by municipality, cadastral sheet and parcel label."
+    },
+    {
+      "name": "zornade_admin_lists",
+      "title": "List Italian regions, provinces and municipalities",
+      "readOnly": true,
+      "description": "Administrative reference lists for building the other queries."
+    }
+  ],
+  "pricing": {
+    "freeTier": {
+      "price": "0",
+      "currency": "EUR",
+      "rateLimit": "10000 requests/hour per token",
+      "condition": "Keep the attribution 'Dati elaborati da Zornade' visible in the product."
+    },
+    "commercialLicence": {
+      "api": { "price": 490, "currency": "EUR", "period": "year", "per": "company" },
+      "visuraApi": { "price": 990, "currency": "EUR", "period": "year", "per": "company" },
+      "removes": "The Zornade attribution only. Source attributions (Agenzia delle Entrate, ISTAT, ISPRA, INGV, Copernicus) remain mandatory.",
+      "url": "https://zornade.com/licenza-commerciale"
+    },
+    "support": {
+      "base": { "price": 1800, "currency": "EUR", "period": "year", "firstResponse": "1 business day" },
+      "ops": { "price": 4800, "currency": "EUR", "period": "year", "firstResponse": "4 business hours" },
+      "url": "https://zornade.com/continuita"
+    },
+    "url": "https://zornade.com/pricing"
+  },
+  "registry": {
+    "official": "io.github.zornade/zornade-mcp",
+    "url": "https://registry.modelcontextprotocol.io/v0/servers?search=zornade"
+  },
+  "repository": "https://github.com/zornade/zornade-mcp",
+  "licence": "MIT",
+  "documentation": "https://app.zornade.com/api",
+  "status": "https://zornade.com/stato",
+  "contact": "hello@zornade.com"
+}
