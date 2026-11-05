@@ -157,6 +157,16 @@ mcp-publisher publish    # requires `mcp-publisher login github` once
 - Tool calls require a free Zornade API key. Direct API v2 calls are the
   right tool for batch pipelines, see [api.zornade.com](https://api.zornade.com).
 
+## Costs
+
+Reading is free: a Zornade API key allows 10,000 requests per hour and you can
+keep five keys per account. The server itself is MIT, so it can also be
+self-hosted from this repository.
+
+A commercial license, from 490 EUR per year, removes the "Dati elaborati da
+Zornade" attribution for products that embed the data. Source attributions stay
+mandatory in every case. Product page and plans: https://zornade.com/mcp/
+
 ## License
 
 Two distinct layers:
