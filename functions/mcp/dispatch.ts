@@ -119,9 +119,17 @@ export async function gestisciRichiesta(
   if (!haId) return { tipo: 'notifica' };
 
   // Il client dice chi e': lo registriamo per il monitoraggio. `initialize` e'
-  // il saluto dell'era precedente, `server/discover` quello attuale.
+  // il saluto dell'era precedente, `server/discover` quello attuale, e sono lo
+  // stesso evento logico: l'apertura di una sessione.
+  //
+  // Vengono registrati entrambi come `initialize` di proposito. I pannelli
+  // Grafana contano le sessioni con `tool = 'initialize'` e le chiamate con
+  // `tool <> 'initialize'`: scrivendo `server/discover` nella colonna, ogni
+  // discovery sarebbe contata come chiamata a un tool e i pannelli delle
+  // sessioni andrebbero a zero per i client aggiornati. La distinzione fra le
+  // due ere resta nel codice, non nella tabella.
   if (method === 'initialize' || method === 'server/discover') {
-    logMcpUsage({ tool: method, client: nomeClient(msg), apiKey });
+    logMcpUsage({ tool: 'initialize', client: nomeClient(msg), apiKey });
   }
 
   switch (method) {
