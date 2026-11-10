@@ -3,3 +3,7 @@
 
 # Pacchetti di submission generati dagli script
 dist/
+
+# Pacchetto npm
+npm/node_modules/
+npm/*.tgz

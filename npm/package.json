@@ -1,0 +1,51 @@
+{
+  "name": "@zornade/mcp",
+  "version": "1.0.0",
+  "description": "Italian cadastral parcels, geocoding and OMI valuations for AI agents, from a client that only speaks stdio",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "zornade-mcp": "bin/zornade-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:e2e": "node e2e/stdio-probe.mjs && node e2e/header-probe.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "model-context-protocol",
+    "catasto",
+    "cadastre",
+    "cadastral",
+    "parcels",
+    "particelle",
+    "geocoding",
+    "omi",
+    "italy",
+    "real-estate",
+    "gis",
+    "qgis"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zornade/zornade-mcp.git",
+    "directory": "npm"
+  },
+  "homepage": "https://mcp.zornade.com",
+  "bugs": {
+    "url": "https://github.com/zornade/zornade-mcp/issues"
+  },
+  "dependencies": {
+    "mcp-remote": "0.16.5"
+  }
+}
