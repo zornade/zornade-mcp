@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Italian cadastral parcels, geocoding and OMI valuations for AI agents, from a client that only speaks stdio",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "zornade-mcp": "bin/zornade-mcp.js"
