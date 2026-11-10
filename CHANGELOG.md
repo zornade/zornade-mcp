@@ -5,6 +5,50 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-11-10
+
+Protocollo MCP 2026-07-28: nucleo stateless, `server/discover` obbligatoria,
+`resultType` su ogni risultato. Il server dichiara 88 milioni di particelle.
+
+### Added
+
+- `server/discover`, che la revisione 2026-07-28 rende obbligatoria («Servers
+  MUST implement it»): restituisce versioni servite, capacita', identita' e
+  istruzioni, con `ttlMs` e `cacheScope` per la cache lato client. Risponde
+  senza credenziali, perche' e' la prima richiesta di ogni client nuovo e la
+  usano anche i validatori delle directory.
+- `resultType: "complete"` su ogni risultato di `tools/list` e `tools/call`,
+  come richiede la revisione.
+- `ttlMs` e `cacheScope: "public"` sugli elenchi di tool.
+
+### Changed
+
+- Il protocollo vive in `functions/mcp/dispatch.ts`, condiviso da HTTP e
+  stdio. I due entrypoint non duplicano piu' la logica, quindi i check stdio
+  delle directory verificano lo stesso codice dei client HTTP.
+- Versione servite dichiarate: 2026-07-28, 2025-11-25, 2025-06-18. `initialize`
+  resta servito per i client non aggiornati (comportamento dual-era previsto
+  dalla specifica).
+- Risposta JSON o SSE secondo l'`Accept` del client, invece di pretendere che
+  il client accetti entrambi.
+- GET sull'endpoint risponde 405 con `Allow: POST, OPTIONS` (non esistono piu'
+  stream persistenti ne' sessioni da chiudere).
+- Le notifiche rispondono 202 senza corpo.
+
+### Removed
+
+- La dipendenza `mcp-lite` 0.10.0, ferma al 3 novembre 2025.
+- L'header `Mcp-Session-Id` dal CORS esposto: la revisione elimina la sessione
+  di protocollo. Resta accettato in ingresso per i client vecchi.
+
+### Note
+
+- `@modelcontextprotocol/server` 2.4.0, l'SDK "ufficiale" v2, dichiara nel
+  README di implementare la 2026-07-28 ma nel codice espone
+  `LATEST_PROTOCOL_VERSION = "2025-11-25"` e non elenca la 2026-07-28 fra le
+  versioni servite (verificato a runtime il 10/11/2026). Da qui la scelta di
+  servire il protocollo direttamente.
+
 ## [1.2.0] - 2026-11-01
 
 Registry metadata, licence and support surfaced to clients, and a landing page

@@ -1,9 +1,9 @@
 {
   "name": "zornade",
   "title": "Zornade MCP - Italian cadastral data for AI agents",
-  "version": "1.2.0",
-  "protocolVersion": "2025-06-18",
-  "description": "Model Context Protocol server for Italian cadastral data: 85 million parcels with OMI valuations, hydrogeological and seismic risk, subsidence, solar potential and planning constraints. Six read-only tools.",
+  "version": "2.0.0",
+  "protocolVersion": "2026-07-28",
+  "description": "Model Context Protocol server for Italian cadastral data: 88 million parcels with OMI valuations, hydrogeological and seismic risk, subsidence, solar potential and planning constraints. Six read-only tools.",
   "endpoint": "https://mcp.zornade.com/mcp",
   "transport": "streamable-http",
   "authentication": {
@@ -13,7 +13,9 @@
     },
     "apiKey": {
       "header": "x-api-key",
-      "alternativeHeaders": ["Authorization: Bearer <key>"],
+      "alternativeHeaders": [
+        "Authorization: Bearer <key>"
+      ],
       "queryParameter": "api_key",
       "prefix": "zrn_",
       "obtainAt": "https://app.zornade.com/api",
@@ -66,14 +68,34 @@
       "condition": "Keep the attribution 'Dati elaborati da Zornade' visible in the product."
     },
     "commercialLicence": {
-      "api": { "price": 490, "currency": "EUR", "period": "year", "per": "company" },
-      "visuraApi": { "price": 990, "currency": "EUR", "period": "year", "per": "company" },
+      "api": {
+        "price": 490,
+        "currency": "EUR",
+        "period": "year",
+        "per": "company"
+      },
+      "visuraApi": {
+        "price": 990,
+        "currency": "EUR",
+        "period": "year",
+        "per": "company"
+      },
       "removes": "The Zornade attribution only. Source attributions (Agenzia delle Entrate, ISTAT, ISPRA, INGV, Copernicus) remain mandatory.",
       "url": "https://zornade.com/licenza-commerciale"
     },
     "support": {
-      "base": { "price": 1800, "currency": "EUR", "period": "year", "firstResponse": "1 business day" },
-      "ops": { "price": 4800, "currency": "EUR", "period": "year", "firstResponse": "4 business hours" },
+      "base": {
+        "price": 1800,
+        "currency": "EUR",
+        "period": "year",
+        "firstResponse": "1 business day"
+      },
+      "ops": {
+        "price": 4800,
+        "currency": "EUR",
+        "period": "year",
+        "firstResponse": "4 business hours"
+      },
       "url": "https://zornade.com/continuita"
     },
     "url": "https://zornade.com/pricing"

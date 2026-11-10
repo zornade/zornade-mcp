@@ -13,14 +13,14 @@ WORKDIR /app
 # Solo il sorgente della funzione: le dipendenze sono dichiarate inline
 # con specifier npm: versionati (nessun lockfile esterno necessario).
 # Va copiata TUTTA la cartella functions/mcp/: index.ts importa tools.ts
-# (definizioni condivise dei tool) e stdio.ts, che serve al wrapper
+# e dispatch.ts (il protocollo condiviso), e stdio.ts serve al wrapper
 # mcp-proxy usato dai check automatici di Glama.
 COPY functions/mcp/ .
 COPY healthcheck.ts .
 
-# Pre-scarica le dipendenze nell'immagine (hono, mcp-lite, zod):
+# Pre-scarica le dipendenze nell'immagine (hono, zod, supabase-js):
 # a runtime non serve accesso alla rete verso registry npm.
-RUN deno cache index.ts stdio.ts
+RUN deno cache index.ts stdio.ts dispatch.ts
 
 # Porta su cui Deno.serve ascolta di default (0.0.0.0:8000).
 EXPOSE 8000

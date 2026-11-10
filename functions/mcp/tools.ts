@@ -7,7 +7,7 @@
 //   - stdio.ts  container Docker (check Glama), JSON-RPC su stdin/stdout
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { z } from 'npm:zod@4.1.12';
+import { z } from 'npm:zod@4.6.7';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.49.8';
 
 const ZORNADE_BASE = 'https://api.zornade.com/api/v2';
@@ -35,7 +35,10 @@ export interface ToolDef {
   name: string;
   title: string;
   description: string;
-  inputSchema: z.ZodTypeAny;
+  // Tutti e sei i tool usano z.object({...}): il tipo lo dichiara, cosi' l'SDK
+  // v2 puo' ricevere `.shape` (overload ZodRawShape) senza cast e senza
+  // dipendere dall'interfaccia StandardJSONSchema, che zod 4.1 non espone.
+  inputSchema: z.ZodObject<z.ZodRawShape>;
   annotations: ToolAnnotations;
   handler: (args: Record<string, unknown>) => Promise<ToolTextResult>;
 }

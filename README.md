@@ -112,13 +112,20 @@ are.
 
 ## Architecture
 
-- `functions/mcp/index.ts` - Supabase Edge Function (Deno), built with
-  [mcp-lite](https://github.com/fiberplane/mcp-lite) 0.10.0 + Hono, streamable
-  HTTP transport. Pattern from the official Supabase MCP guide.
+- `functions/mcp/dispatch.ts` - the protocol, in one place: JSON-RPC dispatch
+  (`server/discover`, `initialize`, `ping`, `tools/list`, `tools/call`),
+  version negotiation and result envelopes. Written against the 2026-07-28
+  revision instead of an SDK because the published libraries do not serve it:
+  `mcp-lite` stops at 0.10.0 (Nov 2025), and `@modelcontextprotocol/server`
+  2.4.0 declares `LATEST_PROTOCOL_VERSION = 2025-11-25` despite its README.
+- `functions/mcp/index.ts` - Supabase Edge Function (Deno) with Hono. Auth
+  (API key, Bearer, query, OAuth 2.1), 401 with `WWW-Authenticate`, JSON or SSE
+  depending on what the client accepts.
 - `functions/mcp/tools.ts` - tool definitions shared by both transports, with
   `title` and `annotations` (`readOnlyHint`, `idempotentHint`, `openWorldHint`).
 - `functions/mcp/stdio.ts` - stdio entrypoint, used by the Docker image and by
-  wrapper tools that spawn a child process.
+  wrapper tools that spawn a child process. It runs the same dispatcher, so
+  directory validators exercise the same code as HTTP clients.
 - `netlify.toml` + `public/` - Netlify reverse proxy for the clean hostname
   `mcp.zornade.com` (no build step).
 
@@ -145,13 +152,13 @@ mcp-publisher publish    # requires `mcp-publisher login github` once
 
 ## Known limitations
 
-- The HTTP transport is stateless: no persistent SSE sessions. Some modern
-  SDK clients open a persistent SSE GET after initialize and receive a 400;
-  request/response calls work normally and that error is harmless.
-- Protocol revision negotiation: the server supports the 2025 MCP revisions
-  (2025-03-26 and 2025-06-18). A client requesting a newer or unknown
-  revision is answered with the oldest supported revision instead of an
-  error.
+- The transport is stateless by design, as the 2026-07-28 revision requires.
+  There are no SSE sessions and no `Mcp-Session-Id`: a GET on the endpoint
+  answers 405 with an `Allow: POST, OPTIONS` header.
+- Protocol revisions served: 2026-07-28, 2025-11-25 and 2025-06-18. Modern
+  clients start with `server/discover`; older clients still get a working
+  `initialize` answer, which is the dual-era behaviour the specification
+  allows.
 - Tool responses are text-only: geometries are omitted to keep the LLM
   context light.
 - Tool calls require a free Zornade API key. Direct API v2 calls are the
