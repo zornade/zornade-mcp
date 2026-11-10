@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
   "name": "zornade-mcp",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Italian cadastral, geospatial and real-estate data for AI agents: geocoding on 18.7M+ addresses, cadastral parcel profiles with risk, solar and valuation layers, and administrative lists.",
   "author": {
     "name": "Zornade",
