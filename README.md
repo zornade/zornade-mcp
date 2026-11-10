@@ -105,10 +105,14 @@ A typical conversation, from natural language to a structured answer:
 ```
 
 (abridged for brevity; geometry is omitted from tool replies). Field names are
-English across the API (`area_m2`, `pga`, `risk_label`, ...). A few official
-cadastral terms stay in Italian on purpose (`foglio`, `sezione`), and values
-like street, municipality and region names are proper names and stay as they
-are.
+English across the API (`area_m2`, `pga`, `risk_label`, ...). One note for
+tooling that scans this file: `meta.zornade_attribution_required` is a field of
+the API response, not a tool. The tool names are the six listed above and
+nothing else.
+
+A few official cadastral terms stay in Italian on purpose (`foglio`,
+`sezione`), and values like street, municipality and region names are proper
+names and stay as they are.
 
 ## Architecture
 

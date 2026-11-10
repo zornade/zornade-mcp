@@ -91,7 +91,7 @@ Replies are compact JSON with **English field names**: `area_m2`, `pga`,
 A few official cadastral terms stay in Italian on purpose (`foglio`, `sezione`),
 and municipality/street/region names are proper names.
 
-Always check `meta`:
+Always check `meta` (these are response fields, not tool names):
 
 - `meta.licenses` lists the source and licence of every data layer in the reply.
 - `meta.zornade_attribution_required: true` means the answer must credit Zornade
