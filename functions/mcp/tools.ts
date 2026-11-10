@@ -3,8 +3,9 @@
 //
 // Modulo senza side effect. buildTools() costruisce i sei strumenti MCP a
 // partire da una chiave API. Usato da:
-//   - index.ts  Supabase Edge Function, mcp-lite streamable HTTP
+//   - index.ts  Supabase Edge Function, HTTP
 //   - stdio.ts  container Docker (check Glama), JSON-RPC su stdin/stdout
+// Il protocollo sta in dispatch.ts, condiviso dai due entrypoint.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'npm:zod@4.6.7';
