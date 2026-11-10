@@ -73,6 +73,38 @@ or in `.cursor/mcp.json` (project) / `~/.cursor/mcp.json` (global):
 VS Code, Cline and other clients that read the standard `mcpServers` shape use
 the same JSON as Cursor.
 
+### Clients that only speak stdio
+
+Some clients accept only a command to launch locally, not a remote `url` entry.
+For those, use the npm bridge: it starts on your machine and speaks to
+`https://mcp.zornade.com/mcp` on your behalf.
+
+```json
+{
+  "mcpServers": {
+    "zornade": {
+      "command": "npx",
+      "args": ["-y", "@zornade/mcp"],
+      "env": { "ZORNADE_API_KEY": "zrn_YOUR_KEY" }
+    }
+  }
+}
+```
+
+The bridge does two things a generic stdio-to-HTTP proxy cannot. It passes
+`--protocol auto`, so it probes `server/discover` and, finding a `2026-07-28`
+server, answers the legacy `initialize` handshake itself and rewrites the
+following requests for the modern era. And it takes the key from
+`ZORNADE_API_KEY` and sends it as `x-api-key:VALUE` with no space after the
+colon, which is the form that survives the argument escaping bug in Cursor,
+Codex-CLI and Claude Desktop on Windows.
+
+Without a key the OAuth flow starts instead: the server mints a personal key on
+first connection.
+
+Package source lives in [`npm/`](npm/), and the package page is
+[npmjs.com/package/@zornade/mcp](https://www.npmjs.com/package/@zornade/mcp).
+
 ## Test
 
 ```bash
@@ -138,6 +170,7 @@ names and stay as they are.
 | Where | Entry |
 | --- | --- |
 | Official MCP Registry | `io.github.zornade/zornade-mcp`, from `server.json` in this repo |
+| npm | [`@zornade/mcp`](https://www.npmjs.com/package/@zornade/mcp), source in `npm/` |
 | Glama | [glama.ai/mcp/servers/zornade/zornade-mcp](https://glama.ai/mcp/servers/zornade/zornade-mcp) |
 | public-apis | [MCP Servers table](https://github.com/public-apis/public-apis/pull/7617), pull request open |
 
@@ -147,6 +180,40 @@ The registry manifest is republished after every version bump:
 mcp-publisher validate   # offline check against the published schema
 mcp-publisher publish    # requires `mcp-publisher login github` once
 ```
+
+### Publishing the npm bridge
+
+The package is a thin wrapper over `mcp-remote`, so it needs a release only when
+the wrapper changes, not when the server does.
+
+Two ways to publish, both documented because the first one has three traps.
+
+From a workstation, `npm publish` in `npm/`. The account needs 2FA enabled:
+npm refuses to publish without it, and its 2FA is security-key only (Touch ID,
+Face ID, Windows Hello, YubiKey), not a six digit code. Each publish raises its
+own challenge, so the one you answered when enabling 2FA does not carry over.
+`publishConfig.access` is set to `public` in `package.json` because without it a
+scoped package is treated as private on first publish and the registry answers
+`402 Payment Required`.
+
+From CI, push a tag matching `npm-v*`. `.github/workflows/publish-npm.yml`
+publishes through OIDC trusted publishing, checks that npm is at least 11.5.1 and
+that the tag equals `package.json`, and needs no token. Configure the trusted
+publisher on the package page first, and note two things: a fresh configuration
+expires if it does not complete its first publish within 2 days, and
+configurations created after 3 September 2026 allow only `npm stage publish`
+unless the permission for direct `npm publish` is ticked.
+
+Never tag `npm-v1.0.0` for an already published version: the workflow runs and
+fails on the duplicate.
+
+After a publish, the full registry document answers immediately while the
+abbreviated one that `npm install` uses can lag for a few minutes. A `404` from
+`registry.npmjs.org/@zornade%2fmcp` right after publishing is not necessarily a
+failed publish: check `dist-tags` in the full document. The registry also leaves
+a `0.0.0-stage` placeholder version behind, described as "Temporary package
+placeholder for staged publishing". It is npm's own object and does not affect
+`latest`.
 
 ## Documentation
 
