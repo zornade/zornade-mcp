@@ -1,0 +1,55 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "npm-v*"
+
+permissions:
+  id-token: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: npm
+
+jobs:
+  publish:
+    name: Publish @zornade/mcp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Check npm is new enough for trusted publishing
+        run: |
+          node -e "
+            const { execSync } = require('node:child_process');
+            const v = execSync('npm --version').toString().trim();
+            const [maj, min, pat] = v.split('.').map(Number);
+            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && pat >= 1)));
+            console.log('npm ' + v);
+            if (!ok) { console.error('npm 11.5.1 or later is required'); process.exit(1); }
+          "
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/npm-v')
+        run: |
+          node -e "
+            const { version } = require('./package.json');
+            const tag = process.env.GITHUB_REF_NAME.replace(/^npm-v/, '');
+            console.log('tag ' + tag + ', package.json ' + version);
+            if (tag !== version) { console.error('tag and package.json disagree'); process.exit(1); }
+          "
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm publish
