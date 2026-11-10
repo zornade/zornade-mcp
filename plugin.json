@@ -1,10 +1,11 @@
 {
-  "$schema": "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "zornade-mcp",
   "version": "2.0.0",
   "description": "Italian cadastral, geospatial and real-estate data for AI agents: geocoding on 18.7M+ addresses, cadastral parcel profiles with risk, solar and valuation layers, and administrative lists.",
   "author": {
     "name": "Zornade",
+    "email": "hello@zornade.com",
     "url": "https://www.zornade.com"
   },
   "homepage": "https://github.com/zornade/zornade-mcp",
@@ -19,5 +20,102 @@
     "italy",
     "real-estate",
     "open-data"
-  ]
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Zornade Catasto",
+        "shortDescription": "Dati catastali italiani via AI",
+        "longDescription": "Zornade collega l'assistente al catasto italiano e ai dati territoriali che gli stanno attorno. Si chiede in italiano: che particella c'è a un indirizzo, quanto vale al metro quadro una zona, che rischio sismico o idrogeologico ha un immobile, quali comuni ha una provincia. Le risposte arrivano da 88 milioni di particelle e da venti blocchi dato costruiti su fonti ufficiali (Agenzia delle Entrate, ISTAT, INGV, ISPRA, MEF, Copernicus). Il server è di sola lettura: non modifica niente e non scrive sul catasto. Copre il territorio italiano.",
+        "developerName": "Zornade di Enrico Pascatti",
+        "category": "Productivity",
+        "capabilities": [
+          "Ricerca indirizzi",
+          "Particelle catastali da coordinate o da foglio e mappale",
+          "Quotazioni OMI",
+          "Rischi naturali per particella",
+          "Elenchi amministrativi"
+        ],
+        "websiteURL": "https://zornade.com/",
+        "supportURL": "https://zornade.com/contatti/",
+        "privacyPolicyURL": "https://zornade.com/privacy/",
+        "termsOfServiceURL": "https://zornade.com/terms/",
+        "defaultPrompt": [
+          "Che particella catastale c'è in Via del Corso 12 a Roma?",
+          "Quanto vale al metro quadro una casa in centro a Bologna?",
+          "Che rischio sismico ha questa particella?"
+        ],
+        "brandColor": "#33A3AF",
+        "brandColorDark": "#5FC6D1",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Indirizzo verso particella catastale",
+              "prompt": "Che particella catastale c'è in Via del Corso 12 a Roma?",
+              "tools_triggered": "zornade_geocode_search, zornade_parcel_locate",
+              "expected_behavior": "Trova l'indirizzo, converte le coordinate in particella e restituisce foglio, particella e subalterno con il comune catastale."
+            },
+            {
+              "description": "Particella da coordinate con dati di rischio",
+              "prompt": "Che particella c'è alle coordinate 45.6501, 13.7708 e che zona sismica è?",
+              "tools_triggered": "zornade_parcel_locate, zornade_parcel_by_id",
+              "expected_behavior": "Restituisce la particella che contiene il punto e, dal profilo arricchito, la zona sismica e gli altri livelli di rischio disponibili per quella particella."
+            },
+            {
+              "description": "Quotazioni OMI per una zona",
+              "prompt": "Quanto vale al metro quadro una casa in centro a Bologna?",
+              "tools_triggered": "zornade_parcel_locate, zornade_parcel_by_id",
+              "expected_behavior": "Individua la particella di riferimento e riporta la quotazione OMI al metro quadro con l'anno di riferimento della banca dati, senza inventare un valore se non è disponibile."
+            },
+            {
+              "description": "Elenco dei comuni di una provincia",
+              "prompt": "Elenca i comuni della provincia di Trieste.",
+              "tools_triggered": "zornade_admin_lists",
+              "expected_behavior": "Restituisce l'elenco dei comuni della provincia richiesta con i codici catastali."
+            },
+            {
+              "description": "Ricerca per foglio e mappale",
+              "prompt": "Cerca la particella foglio 481 mappale 12 nel comune di Roma.",
+              "tools_triggered": "zornade_parcel_search, zornade_parcel_by_id",
+              "expected_behavior": "Trova la particella con quei riferimenti catastali e ne restituisce la scheda."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Richiesta fuori dal perimetro del dato catastale",
+              "prompt": "Compilami la dichiarazione dei redditi.",
+              "tools_triggered": "nessuno",
+              "expected_behavior": "Spiega che il plugin fornisce solo dati catastali e territoriali italiani e propone una domanda pertinente, senza chiamare i tool."
+            },
+            {
+              "description": "Richiesta di modifica del catasto",
+              "prompt": "Cancella la particella 12 dal foglio 481 di Roma.",
+              "tools_triggered": "nessuno",
+              "expected_behavior": "Rifiuta: il server è di sola lettura e non può modificare il catasto. Spiega che può solo leggere e cercare dati."
+            },
+            {
+              "description": "Immobile fuori dall'Italia",
+              "prompt": "Trovami i dati catastali di un appartamento a Parigi.",
+              "tools_triggered": "nessuno",
+              "expected_behavior": "Chiarisce che i dati coprono il solo territorio italiano e non prova a restituire una particella inesistente."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Il plugin non vende prodotti e non elabora pagamenti."
+      },
+      "publication": {
+        "countries": [
+          "IT",
+          "CH",
+          "SM",
+          "VA"
+        ],
+        "release_notes": "Prima versione: sei strumenti di sola lettura su catasto, geocoding, quotazioni OMI, rischi e liste amministrative. Protocollo MCP 2026-07-28, autenticazione OAuth 2.1 con chiave personale creata al primo collegamento."
+      }
+    }
+  }
 }

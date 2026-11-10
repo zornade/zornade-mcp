@@ -1,2 +1,5 @@
 .netlify/
 .DS_Store
+
+# Pacchetti di submission generati dagli script
+dist/
